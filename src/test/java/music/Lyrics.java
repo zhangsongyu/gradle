@@ -1,9 +1,12 @@
 package music;
 
+import com.alibaba.fastjson.JSON;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
+import org.apache.commons.io.FileUtils;
 
+import java.io.File;
 import java.io.IOException;
 
 /**
@@ -11,8 +14,8 @@ import java.io.IOException;
  */
 public class Lyrics {
     public static void main(String[] args) throws IOException {
-        //http://music.163.com/api/song/lyric?id=27566765&lv=1&kv=1&tv=-1
 
+        String FILE_PATH = "C:\\Users\\zsy\\Documents\\lyric\\";
         OkHttpClient client = new OkHttpClient();
 
         Request songsList = new Request.Builder()
@@ -24,15 +27,25 @@ public class Lyrics {
 
         Response songListResp = client.newCall(songsList).execute();
 
-        JSON.songListResp.body().string()
+        SongVO.SongListResp songList = JSON.parseObject(songListResp.body().string(), SongVO.SongListResp.class);
 
-        Request lyric = new Request.Builder()
-                .url("http://music.163.com/api/song/lyric?id=27566765&lv=1&kv=1&tv=-1")
-                .get()
-                .addHeader("cache-control", "no-cache")
-                .addHeader("postman-token", "b3a432e9-ff84-73cc-a34c-d40fc30c4c86")
-                .build();
+        songList.getResult().getTracks().forEach(track -> {
+            Request lyric = new Request.Builder()
+                    .url("http://music.163.com/api/song/lyric?id=" + track.getId() + "&lv=1&kv=1&tv=-1")
+                    .get()
+                    .addHeader("cache-control", "no-cache")
+                    .addHeader("postman-token", "b3a432e9-ff84-73cc-a34c-d40fc30c4c86")
+                    .build();
 
-        Response lyricResp = client.newCall(lyric).execute();
+            try {
+                Response lyricResp = client.newCall(lyric).execute();
+                SongVO.LrcResp lrc = JSON.parseObject(lyricResp.body().string(), SongVO.LrcResp.class);
+                FileUtils.writeStringToFile(new File(FILE_PATH + songList.getResult().getName()),
+                        lrc.getLrc().getLyric().getLyric(), "utf-8");
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        });
+
     }
 }
